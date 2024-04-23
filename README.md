@@ -1,4 +1,4 @@
-# Simple Bet 
+# Football Scoreboard
 
 ## sportradar demo project
 

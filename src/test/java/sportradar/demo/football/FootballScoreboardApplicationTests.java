@@ -100,7 +100,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * desc: Tries to remove match from empty board
  * make sure: exception has throws: MatchNotStartedException(String homeTeam, String awayTeam)
  * <p>
- * TODO could add double removing the same match test case
+ * TODO could add 'double removing the same match' test case
  * <p>
  * name: 'Remove From multi match board'
  * desc: Removes dedicated match from multi match board
@@ -109,6 +109,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * invoke: start match B and verify it
  * invoke: remove match A, verify match B is only on the board
  * <p>
+ * TODO good to have test case for UPDATE operation:
  *
  * <p>
  *  API:
