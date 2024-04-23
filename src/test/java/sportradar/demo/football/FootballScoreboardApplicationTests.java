@@ -110,7 +110,15 @@ import org.springframework.boot.test.context.SpringBootTest;
  * invoke: remove match A, verify match B is only on the board
  * <p>
  * TODO good to have test case for UPDATE operation:
- *
+ *  Let's assume scoreboard could be updated from different places of the world.
+ *  That means f.e. 'UpdateScore' requests during the trip from client to server
+ *  could achieve different time delays.
+ *  And That means 'the server', who is in charge of request's processing
+ *  could receive them in wrong order.
+ *   For example:
+ *   Original score order happened at match: 0 - 0, 0 - 1, 1 - 1
+ *   Score updates ordering at server  side: 0 - 1, 1 - 1, 0 - 0
+ *   Final score state for that match become incorrect and could stay in it for a long time.
  * <p>
  *  API:
  *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
