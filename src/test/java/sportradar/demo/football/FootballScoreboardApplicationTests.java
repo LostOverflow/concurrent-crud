@@ -112,7 +112,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  *
  * <p>
  *  API:
- *  signature: getMatches(String homeTeam, String awayTeam)
+ *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
  *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
  *  Removes match from the scoreboard.
  * <p>
