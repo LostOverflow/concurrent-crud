@@ -9,11 +9,11 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
-    <groupId>sportradar.demo</groupId>
-    <artifactId>simple-bet</artifactId>
+    <groupId>sportradar.demo.football</groupId>
+    <artifactId>scoreboard</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>simple-bet</name>
-    <description>Demo project for Sport Radar</description>
+    <name>football-scoreboard</name>
+    <description>Live Football World Cup Scoreboard library</description>
 
     <properties>
         <java.version>17</java.version>
