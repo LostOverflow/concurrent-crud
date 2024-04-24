@@ -24,8 +24,8 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     private final AtomicInteger seqGen = new AtomicInteger();
 
     public void startNewMatch(String homeTeam, String awayTeam) {
-        var newMatch = new CurrentMatch(homeTeam, awayTeam, 0, 0, seqGen.incrementAndGet());
-        matches.add(newMatch);
+        // var newMatch = new CurrentMatch(homeTeam, awayTeam, 0, 0, seqGen.incrementAndGet());
+        // matches.add(newMatch);
     }
 
     @Override

@@ -1,15 +1,11 @@
 package sportradar.demo.football.dto;
 
-import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 @Data
-@Builder
 @RequiredArgsConstructor
-public class CurrentMatch {
-
-    // TODO Add Comparable
+public class CurrentMatch implements Comparable<CurrentMatch> {
 
     private final String homeTeamName;
     private final String awayTeamName;
@@ -37,6 +33,18 @@ public class CurrentMatch {
     @Override
     public String toString() {
         return "#" + startSequence + " " + homeTeamName + " " + homeTeamScore + " - " + awayTeamName + " " + awayTeamScore;
+    }
+
+    @Override
+    public int compareTo(CurrentMatch o) {
+        var thisScores = this.homeTeamScore + this.awayTeamScore;
+        var otherScores = o.homeTeamScore + o.awayTeamScore;
+        // according to business requirements we have to compare CurrentMatch
+        // by total scores, and if the same scores then compare by added sequence desc
+        if (thisScores == otherScores) {
+            return -1 * this.startSequence.compareTo(o.startSequence);
+        }
+        return thisScores > otherScores ? 1 : -1;
     }
 
 }
