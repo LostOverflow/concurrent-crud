@@ -5,49 +5,82 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * TDD Test plan:
+ *
  * <p>
- * API:
+ * API OPERATION:
  * signature: startNewMatch(String homeTeam, String awayTeam)
  * desc: Starts a new match, assuming initial score 0(Home team) – 0(Away team) and adding it the scoreboard.
  * <p>
- * Test cases:
- * name: 'Empty board. Valid team names'
- * desc: Adding a new match when NO ONE other match started before
- * make sure: board is empty (getMatches should return empty list)
- * invoke: add new match
- * verify: only single invocation was performed on dashboard for method: Start a new match
+ *
+ * <p>
+ * TEST CASES:
+ * <p>
+ * name      : Empty board. Valid team names
+ * desc      : Adding a new match when NO ONE other match started before
+ * make sure : board is empty (getMatches should return empty list)
+ * invoke    : add new match
+ * verify    : only single invocation was performed on dashboard for method: Start a new match
  * dashboard should show only added single match with exact same team names and order (Home team is always left)
  * <p>
- * name: 'Empty board. Invalid team names: input names are duplicated'
- * desc: Adding a new match when NO ONE other match started before, but passing two SAME NAMES for two teams
- * verify: validation exception has thrown: DuplicatedTeamNamesException
+ *
  * <p>
- * name: 'Empty board. Invalid team names: Home team name is too long'
+ * name     : Empty board. Invalid team names: input names are duplicated
+ * desc     : Adding a new match when NO ONE other match started before, but passing two SAME NAMES for two teams
+ * verify   : validation exception has thrown: DuplicatedTeamNamesException
+ * <p>
+ *
+ * <p>
+ * name: Empty board. Invalid team names: Home team name is too long
  * desc: Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
  * verify: validation exception has thrown: TeamNameOverflowException
  * <p>
+ *
+ * <p>
  * the same case but vice versa with the Away team
+ * <p>
+ *
  * <p>
  * the same case but both team names are too long
  * <p>
- * name: Non Empty Board. Home team is already playing
+ *
+ * <p>
+ * name: Non Empty Board. HOME team is already playing
  * desc: trying to add a new match when HOME team is already playing in other match
  * verify: validation exception has thrown: TeamAlreadyPlayingException
  * <p>
- * name: Non Empty Board. Away team is already playing
+ *
+ * <p>
+ * name: Non Empty Board. AWAY team is already playing
  * desc: trying to add a new match when AWAY team is already playing in OTHER match
  * verify: validation exception has thrown: TeamAlreadyPlayingException
+ * <p>
+ *
  * <p>
  * name: Duplicated Start for the same match
  * desc: trying to add a new match when AWAY team is already playing in OTHER match
  * verify: validation exception has thrown: TeamAlreadyPlayingException
  * <p>
- * API:
+ *
+ * <p>
+ * TODO good to have test case:
+ *  According to the task description we have to 'remember' the ordering of started matches.
+ *  Concurrency challenge:
+ *  Let's assume that:
+ *      * matches could start and finish
+ *      * matches could be extended for a different period of time
+ *      * the same match (the same teams) could have such changes history log:
+ *          started -> updated -> removed -> started (why not?)
+ *  To make sure that getSummary operation is returning correct ordered matches
+ *  we have to be able of making snapshots of match's ordered list in thread safe manner
+ * </p>
+ *
+ * API OPERATION:
+ * <p>
  * signature: updateScore(int homeTeamScore, int awayTeamScore)
  * desc: Receives a pair of absolute scores: home team score and away team score
  * and updates it appropriately
  * <p>
- * Test cases:
+ * TEST CASES:
  * name: 'Update Empty board'
  * desc: Trying to update team[s] which are NOT playing now
  * verify: MatchNotStartedException
@@ -70,24 +103,24 @@ import org.springframework.boot.test.context.SpringBootTest;
  * invoke: update match B
  * verify: match B updated with the new score
  * <p>
- *     Note:
+ * Note:
  * I have spent some time thinking on how to validate Update scores. But some lack of football rules:
  * could be the scores updated more than +/-1 at one time? Could it be reset to 0/0 if any emergency happened?
  * Decided not to apply any validation for update yet
  * <p>
- *  API:
- *  signature: finishMatch(String homeTeam, String awayTeam)
- *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
- *  Removes match from the scoreboard.
+ * API OPERATION:
+ * signature: finishMatch(String homeTeam, String awayTeam)
+ * desc: Receives a pair of home and away teams and Finishes match currently in progress.
+ * Removes match from the scoreboard.
  * <p>
- * Test cases:
- *
- *  Note: "removing from" operation could be implemented in both ways:
- *      * throw an exception if search item was not there
- *      * ignore all if search item was not there
- *      If we want to keep idempotency during repeated operations - then should ignore
- *
- *     I prefer to throw an exception, that is more informative
+ * TEST CASES:
+ * <p>
+ * Note: "removing from" operation could be implemented in both ways:
+ * * throw an exception if search item was not there
+ * * ignore all if search item was not there
+ * If we want to keep idempotency during repeated operations - then should ignore
+ * <p>
+ * I prefer to throw an exception, that is more informative
  * <p>
  * name: 'Remove last match'
  * desc: Removes last match from dashboard
@@ -120,12 +153,11 @@ import org.springframework.boot.test.context.SpringBootTest;
  *   Score updates ordering at server  side: 0 - 1, 1 - 1, 0 - 0
  *   Final score state for that match become incorrect and could stay in it for a long time.
  * <p>
- *  API:
+ *  API OPERATION:
  *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
  *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
  *  Removes match from the scoreboard.
  * <p>
- *
  */
 @SpringBootTest
 class FootballScoreboardApplicationTests {
