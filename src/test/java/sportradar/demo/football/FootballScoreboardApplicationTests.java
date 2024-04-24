@@ -157,6 +157,8 @@ import org.springframework.boot.test.context.SpringBootTest;
  *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
  *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
  *  Removes match from the scoreboard.
+ *
+ *  TODO add setSummary taking in account ordering of matches being added
  * <p>
  */
 @SpringBootTest

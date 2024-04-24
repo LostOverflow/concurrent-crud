@@ -5,7 +5,7 @@ import sportradar.demo.football.dto.CurrentMatch;
 import java.util.List;
 
 // TODO take care of java docs!
-public interface FootballDashboard {
+public interface FootballScoreboard {
     void startNewMatch(String homeTeam, String awayTeam);
 
     void updateScore(int homeTeamScore, int awayTeamScore);
