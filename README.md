@@ -15,3 +15,6 @@ question: should I implement it in a thread safety style? If yes, then I probabl
    return an object
 
 During development keep always spell checker on, and check correct names. Apply into dictionary if it needs.
+
+That actually is not finished for 100% but anyway I suppose it has some value to see.
+
