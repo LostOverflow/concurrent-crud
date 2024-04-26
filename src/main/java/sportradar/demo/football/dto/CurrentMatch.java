@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
  * */
 public class CurrentMatch implements Comparable<CurrentMatch> {
 
+    // TODO add Validators, Converters, Formatters according to test requirements
     private final String homeTeamName;
     private final String awayTeamName;
     // to guarantee atomic updates for both team scores
@@ -27,8 +28,9 @@ public class CurrentMatch implements Comparable<CurrentMatch> {
     private final Integer homeTeamScore;
     private final Integer awayTeamScore;
 
-    // StartSequence assigned during CurrentMatch is being created.
-    // Each new created CurrentMatch should have unique, always incremented number
+    // StartSequence should be assigned during CurrentMatch is being created.
+    // Each new created CurrentMatch should have unique, always incremented number.
+    // Need not guarantee for strict sequence, could have some spaces between: 1, 2, 3, 5, 10, 11...
     private final Integer startSequence;
 
     @Override
@@ -36,8 +38,8 @@ public class CurrentMatch implements Comparable<CurrentMatch> {
         if (!(obj instanceof CurrentMatch other)) {
             return false;
         }
-        // Let's check CurrentMatch equality by ordered team names
-        // due to scores could be changed during match is running
+        // Let's check CurrentMatch equality by team names
+        // because the scores could be changed during match is running
         return this.homeTeamName.equals(other.homeTeamName) &&
                 this.awayTeamName.equals(other.awayTeamName);
     }

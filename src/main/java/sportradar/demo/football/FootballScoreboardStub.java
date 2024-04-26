@@ -4,6 +4,7 @@ import sportradar.demo.football.dto.CurrentMatch;
 
 import java.util.List;
 
+// TODO remove this class on final check if need not at all
 public class FootballScoreboardStub implements FootballScoreboard {
     @Override
     public void startNewMatch(String homeTeam, String awayTeam) {
