@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PRIVATE;
 
 /**
@@ -75,7 +77,30 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     }
 
     @Override
-    public void updateScore(int homeTeamScore, int awayTeamScore) {
+    public void updateScore(String homeTeam, int homeTeamScore, String awayTeam, int awayTeamScore) {
+        // TODO add validation at least to escape negative values
+
+        // Going to catch and hold previous Match reference during atomic computation map operation.
+        // Will use it for rollback if first team be updated but NOT updated for second one
+        var oldMatch = new AtomicReference<>();
+
+        var newMatch = teamToMatches.computeIfPresent(homeTeam, (key, oldValue) -> {
+            // Creating immutable copy of CurrentMatch
+            // Assigning NEW team scores using input parameters
+            // But EXISTING value for startSequence
+            var newValue = new CurrentMatch(
+                    homeTeam, awayTeam, homeTeamScore, awayTeamScore, oldValue.getStartSequence()
+            );
+            oldMatch.set(oldValue);
+            return newValue;
+        });
+
+        if (newMatch == null) {
+            // TODO to be continued
+        }
+
+
+//        var newMatch = new CurrentMatch(homeTeam, awayTeam, homeTeamScore, awayTeamScore);
         throw new IllegalStateException("Not implemented!");
     }
 
@@ -88,12 +113,10 @@ public class FootballScoreboardImpl implements FootballScoreboard {
 
     @Override
     public List<CurrentMatch> getSummary() {
-        // TODO: FINISH HIM!
-
-        // That one makes a thread safe copy of a queue and convert it into immutable list
-//        Arrays.stream(matches.toArray(new CurrentMatch[0]))
-//                .sorted(Comparator.comparing())
-        return List.of();
+        // TODO: no guarantees for Atomic copy of map.. thing about how to fix it
+        return teamToMatches.values().stream()
+                .sorted()
+                .collect(toList());
     }
 
 }

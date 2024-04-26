@@ -13,8 +13,9 @@ mentioned at the notification email. If to keep following all recommendations ve
 question: should I implement it in a thread safety style? If yes, then I probably could break KISS rule.
 2. Get summary API method is actually not described about returning result. Not clear of should we just print result or
    return an object
+3. Update Score is not taking team names as input parameters due to task requirements, was it done intentionally?
 
 During development keep always spell checker on, and check correct names. Apply into dictionary if it needs.
 
-That actually is not finished for 100% but anyway I suppose it has some value to see.
+That actually is not finished for 100%, but anyway I suppose it has some value to see.
 

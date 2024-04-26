@@ -12,7 +12,7 @@ public class FootballScoreboardStub implements FootballScoreboard {
     }
 
     @Override
-    public void updateScore(int homeTeamScore, int awayTeamScore) {
+    public void updateScore(String homeTeam, int homeTeamScore, String awayTeam, int awayTeamScore) {
 
     }
 
