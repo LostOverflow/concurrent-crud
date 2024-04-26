@@ -5,6 +5,18 @@ import lombok.RequiredArgsConstructor;
 
 @Data
 @RequiredArgsConstructor
+/*
+ * Could sound quite strange, but I prefer as fewer comments in code as possible, and Now I have to explain why:
+ *  * Comments in code means something 'unclear', 'strange', 'magical' etc.
+ *    that's why you have to put your comment here - to explain why it looks so strange.
+ *  * Comments explaining really obvious things: var x = 1; // let's assign 1 to new variable x!
+ * Self-descriptive code is really cool!
+ * BTW At
+ *  this.current(demo -> project.getName() + "I have to do it vice versa");
+ *
+ * For example: I prefer NOT TO explain why I decided to implement Comparable...
+ * of course someone is going to Compare it!
+ * */
 public class CurrentMatch implements Comparable<CurrentMatch> {
 
     private final String homeTeamName;
