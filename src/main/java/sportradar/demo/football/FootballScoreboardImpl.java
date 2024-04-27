@@ -22,6 +22,7 @@ import static lombok.AccessLevel.PRIVATE;
 @NoArgsConstructor(access = PRIVATE)
 public class FootballScoreboardImpl implements FootballScoreboard {
 
+    @Getter
     private static final FootballScoreboard instance = new FootballScoreboardImpl();
 
     // SortedMap will take care about checking for unique and ordered items.
@@ -41,6 +42,11 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     // Some of unique ids would be wasted if match is already playing
     // TODO BTW it's dangerous for seqGen to be overflowed if client would send millions of invalid requests
     private final AtomicInteger seqGen = new AtomicInteger();
+
+    @Override
+    public void clearAllMatches() {
+        teamToMatches.clear();
+    }
 
     public void startNewMatch(String homeTeam, String awayTeam) {
         // TODO we could avoid waisted ids of seqGen if implement lazy generation of it:
@@ -115,6 +121,7 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     public List<CurrentMatch> getSummary() {
         // TODO: no guarantees for Atomic copy of map.. thing about how to fix it
         return teamToMatches.values().stream()
+                .distinct()
                 .sorted()
                 .collect(toList());
     }

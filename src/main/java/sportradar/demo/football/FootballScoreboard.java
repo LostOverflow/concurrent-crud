@@ -14,4 +14,5 @@ public interface FootballScoreboard {
 
     List<CurrentMatch> getSummary();
 
+    void clearAllMatches();
 }

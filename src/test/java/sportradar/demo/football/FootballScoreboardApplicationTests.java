@@ -1,7 +1,12 @@
 package sportradar.demo.football;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * TDD Test plan:
@@ -14,14 +19,6 @@ import org.springframework.boot.test.context.SpringBootTest;
  *
  * <p>
  * TEST CASES:
- * <p>
- * name      : Empty board. Valid team names
- * desc      : Adding a new match when NO ONE other match started before
- * make sure : board is empty (getMatches should return empty list)
- * invoke    : add new match
- * verify    : only single invocation was performed on dashboard for method: Start a new match
- * dashboard should show only added single match with exact same team names and order (Home team is always left)
- * <p>
  *
  * <p>
  * name     : Empty board. Invalid team names: input names are duplicated
@@ -73,7 +70,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  *  To make sure that getSummary operation is returning correct ordered matches
  *  we have to be able of making snapshots of match's ordered list in thread safe manner
  * </p>
- *
+ * <p>
  * API OPERATION:
  * <p>
  * signature: updateScore(int homeTeamScore, int awayTeamScore)
@@ -157,15 +154,58 @@ import org.springframework.boot.test.context.SpringBootTest;
  *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
  *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
  *  Removes match from the scoreboard.
- *
+ * <p>
  *  TODO add setSummary taking in account ordering of matches being added
  * <p>
  */
-@SpringBootTest
-class FootballScoreboardApplicationTests {
+public class FootballScoreboardApplicationTests {
+
+    private static FootballScoreboard scoreboard;
+
+    @BeforeAll
+    static void contextLoads() {
+        scoreboard = FootballScoreboardImpl.getInstance();
+    }
+
+    /*
+     I decided do not clear the map (used as in-memory storage) BEFORE each test but only check if it's empty.
+     If map is not empty then probably:
+        * It was not cleaned AFTER the test
+        * Some other parallel test is running and cache map is in usage.
+     I prefer to raise an exception to notify developer that is something wrong
+     */
+    @BeforeEach
+    void checkMatchesClear() {
+        assert scoreboard.getSummary().isEmpty();
+    }
+
+    @AfterEach
+    void clearInMemoryCache() {
+        scoreboard.clearAllMatches();
+        assert scoreboard.getSummary().isEmpty();
+    }
 
     @Test
-    void contextLoads() {
+        /*
+         * name      : Empty board. Valid team names
+         * desc      : Adding a new match when NO ONE other match started before
+         * make sure : board is empty (getMatches should return empty list)
+         * invoke    : add new match
+         * verify    : Dashboard should show only added single match with exact same team names and order
+         *             (Home team is always left)
+         *             Match's sequence number should be incremented
+         */
+    void testStartMatch_EmptyBoard_ValidNames() {
+        var teamA = "teamA";
+        var teamB = "teamB";
+        scoreboard.startNewMatch(teamA, teamB);
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Not a single match started!");
+        var match = matches.get(0);
+        assertEquals(teamA, match.getHomeTeamName());
+        assertEquals(teamB, match.getAwayTeamName());
+        assertTrue(match.getStartSequence() > 0, "Start sequence has to be incremented!");
     }
 
 }
