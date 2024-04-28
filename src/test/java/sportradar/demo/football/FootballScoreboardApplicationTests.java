@@ -19,31 +19,7 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
  * signature: startNewMatch(String homeTeam, String awayTeam)
  * desc: Starts a new match, assuming initial score 0(Home team) – 0(Away team) and adding it the scoreboard.
  * <p>
- *
- * <p>
  * TEST CASES:
- *
- * <p>
- * the same case but both team names are too long
- * <p>
- *
- * <p>
- * name: Non Empty Board. HOME team is already playing
- * desc: trying to add a new match when HOME team is already playing in other match
- * verify: validation exception has thrown: TeamAlreadyPlayingException
- * <p>
- *
- * <p>
- * name: Non Empty Board. AWAY team is already playing
- * desc: trying to add a new match when AWAY team is already playing in OTHER match
- * verify: validation exception has thrown: TeamAlreadyPlayingException
- * <p>
- *
- * <p>
- * name: Duplicated Start for the same match
- * desc: trying to add a new match when AWAY team is already playing in OTHER match
- * verify: validation exception has thrown: TeamAlreadyPlayingException
- * <p>
  *
  * <p>
  * TODO good to have test case:
@@ -142,7 +118,7 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
  *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
  *  Removes match from the scoreboard.
  * <p>
- *  TODO add setSummary taking in account ordering of matches being added
+ *  TODO add getSummary taking in account ordering of matches being added
  * <p>
  */
 public class FootballScoreboardApplicationTests {
@@ -206,8 +182,7 @@ public class FootballScoreboardApplicationTests {
     @Test
     void testStartMatch_EmptyBoard_NamesDuplicated() {
         var teamA = "teamA";
-        var teamB = "teamA";
-        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(teamA, teamB));
+        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(teamA, teamA));
         assertTrue(
                 scoreboard.getSummary().isEmpty(),
                 "Scoreboard state has changed during duplicated teams being added"
@@ -268,6 +243,84 @@ public class FootballScoreboardApplicationTests {
                 scoreboard.getSummary().isEmpty(),
                 "Scoreboard state has changed during invalid team name being added!"
         );
+    }
+
+    /*
+     * <p>
+     * name  : Non-Empty Board. HOME team is already playing
+     * desc  : trying to add a new match when HOME team is already playing in other match
+     * verify: validation exception has thrown: TeamAlreadyPlayingException
+     *         scoreboard state should NOT be changed!
+     * <p>
+     */
+    @Test
+    // I prefer to keep method names short and descriptive but NOT for test methods...
+    // it has to describe not only api name is testing but also input conditions
+    void testStartMatch_NonEmptyBoard_HomeTeamAlreadyPlaying() {
+        var homeTeam = "HomeTeam";
+        var awayTeam = "AwayTeam";
+        var otherTeam = "OtherTeam";
+        scoreboard.startNewMatch(homeTeam, otherTeam);
+        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(homeTeam, awayTeam));
+
+        // check for previous state is the same
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Started match should be single!");
+        var match = matches.get(0);
+        assertEquals(homeTeam, match.getHomeTeamName());
+        assertEquals(otherTeam, match.getAwayTeamName());
+        // TODO Consider if to test startSequence separately (own test)
+    }
+
+    /*
+     * <p>
+     * name  : Non-Empty Board. AWAY team is already playing
+     * desc  : trying to add a new match when AWAY team is already playing in other match
+     * verify: validation exception has thrown: TeamAlreadyPlayingException
+     *         scoreboard state should NOT be changed!
+     * <p>
+     */
+    @Test
+    void testStartMatch_NonEmptyBoard_AwayTeamAlreadyPlaying() {
+        var homeTeamName = "HomeTeam";
+        var awayTeamName = "AwayTeam";
+        var otherTeamName = "OtherTeam";
+        scoreboard.startNewMatch(otherTeamName, awayTeamName);
+        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(homeTeamName, awayTeamName));
+
+        // check for previous state is the same
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Started match should be single!");
+        var match = matches.get(0);
+        assertEquals(awayTeamName, match.getAwayTeamName());
+        assertEquals(otherTeamName, match.getHomeTeamName());
+    }
+
+    /*
+     * <p>
+     * name  : Duplicated Match started
+     * desc  : trying to add the same Match which has already started
+     * verify: validation exception has thrown: TeamAlreadyPlayingException
+     *         scoreboard state should NOT be changed!
+     * <p>
+     */
+    @Test
+    void testStartMatch_DuplicatedMatch() {
+        var homeTeamName = "HomeTeam";
+        var awayTeamName = "AwayTeam";
+
+        scoreboard.startNewMatch(homeTeamName, awayTeamName);
+        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(homeTeamName, awayTeamName));
+
+        // check for previous state is the same
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Started match should be single!");
+        var match = matches.get(0);
+        assertEquals(homeTeamName, match.getHomeTeamName());
+        assertEquals(awayTeamName, match.getAwayTeamName());
     }
 
 }

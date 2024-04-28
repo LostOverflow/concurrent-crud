@@ -73,6 +73,17 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
             // teamToMatches map was not changed by this thread! need not clear it.
             throw new TeamAlreadyPlayingException("Home team is already playing!");
         }
+        // FIXME sometime
+        // At this point incorrect behaviour still could happen:
+        // if current request is invalid (home team being added is not playing, but away team is playing)
+        // we will throw an exception for other threads which could probably valid!
+        // Example:
+        // current thread:
+        //  * adding invalid Match(teamA, teamB) when teamB is already playing, teamA has been added (first step only)
+        // other thread:
+        //  * adding valid Match(teamA, teamC) when teamA is absent on board, teamC is absent on board
+        // Other thread will get FALSE negative exception
+
         existingMatch = teamToMatches.putIfAbsent(awayTeam, newMatch);
         if (existingMatch != null) {
             // We added homeTeam to teamToMatches map
@@ -81,8 +92,6 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
             teamToMatches.remove(homeTeam);
             throw new TeamAlreadyPlayingException("Away team is already playing!");
         }
-        // TODO good for test example:
-        // add Match(teamA, teamB) -> Match(teamB, teamC)
     }
 
     @Override
