@@ -4,9 +4,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import sportradar.demo.football.ex.TeamAlreadyPlayingException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * TDD Test plan:
@@ -19,18 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>
  * TEST CASES:
- *
- * <p>
- * name     : Empty board. Invalid team names: input names are duplicated
- * desc     : Adding a new match when NO ONE other match started before, but passing two SAME NAMES for two teams
- * verify   : validation exception has thrown: DuplicatedTeamNamesException
- * <p>
- *
- * <p>
- * name: Empty board. Invalid team names: Home team name is too long
- * desc: Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
- * verify: validation exception has thrown: TeamNameOverflowException
- * <p>
  *
  * <p>
  * the same case but vice versa with the Away team
@@ -208,4 +196,34 @@ public class FootballScoreboardApplicationTests {
         assertTrue(match.getStartSequence() > 0, "Start sequence has to be incremented!");
     }
 
+    /*
+     * <p>
+     * name     : Empty board. Invalid team names: input names are duplicated
+     * desc     : Adding a new match when NO ONE other match started before, but passing two SAME NAMES for two teams
+     * verify   : validation exception has thrown: DuplicatedTeamNamesException
+     *            scoreboard state should NOT bew changed!
+     * <p>
+     */
+    @Test
+    void testStartMatch_EmptyBoard_NamesDuplicated() {
+        var teamA = "teamA";
+        var teamB = "teamA";
+        assertThrows(TeamAlreadyPlayingException.class, () -> scoreboard.startNewMatch(teamA, teamB));
+        assertTrue(
+                scoreboard.getSummary().isEmpty(),
+                "Scoreboard state has changed during duplicated teams being added"
+        );
+    }
+
+    /*
+     * <p>
+     * name: Empty board. Invalid team names: Home team name is too long
+     * desc: Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
+     * verify: validation exception has thrown: TeamNameOverflowException
+     * <p>
+     */
+    @Test
+    void testStartMatch_EmptyBoard_LongHomeName() {
+
+    }
 }
