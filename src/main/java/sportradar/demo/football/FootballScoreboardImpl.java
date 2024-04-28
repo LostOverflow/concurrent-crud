@@ -2,9 +2,10 @@
 package sportradar.demo.football;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import sportradar.demo.football.dto.CurrentMatch;
 import sportradar.demo.football.ex.TeamAlreadyPlayingException;
+import sportradar.demo.football.validator.MatchValidator;
+import sportradar.demo.football.validator.SportRadarMatchValidator;
 
 import java.util.List;
 import java.util.SortedMap;
@@ -13,17 +14,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.stream.Collectors.toList;
-import static lombok.AccessLevel.PRIVATE;
 
 /**
  * Let's use Scoreboard Implementation as a Singleton to prevent data storage duplication, etc.
  */
-@Getter
-@NoArgsConstructor(access = PRIVATE)
-public class FootballScoreboardImpl implements FootballScoreboard {
+public class FootballScoreboardImpl extends FootballScoreboardTemplate {
 
     @Getter
-    private static final FootballScoreboard instance = new FootballScoreboardImpl();
+    private static final FootballScoreboard instance = new FootballScoreboardImpl(new SportRadarMatchValidator());
 
     // SortedMap will take care about checking for unique and ordered items.
     // Actually... I am going to use only single team name as a Key!
@@ -43,12 +41,17 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     // TODO BTW it's dangerous for seqGen to be overflowed if client would send millions of invalid requests
     private final AtomicInteger seqGen = new AtomicInteger();
 
+    private FootballScoreboardImpl(MatchValidator matchValidator) {
+        super(matchValidator);
+    }
+
     @Override
     public void clearAllMatches() {
         teamToMatches.clear();
     }
 
-    public void startNewMatch(String homeTeam, String awayTeam) {
+    @Override
+    public void doStartNewMatch(String homeTeam, String awayTeam) {
         // TODO we could avoid waisted ids of seqGen if implement lazy generation of it:
         //  for example using lambda: () -> seqGen.incrementAndGet();
         var newMatch = new CurrentMatch(homeTeam, awayTeam, 0, 0, seqGen.incrementAndGet());
@@ -83,7 +86,7 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     }
 
     @Override
-    public void updateScore(String homeTeam, int homeTeamScore, String awayTeam, int awayTeamScore) {
+    public void doUpdateMatchScore(String homeTeam, String awayTeam, int homeTeamScore, int awayTeamScore) {
         // TODO add validation at least to escape negative values
 
         // Going to catch and hold previous Match reference during atomic computation map operation.
@@ -111,7 +114,7 @@ public class FootballScoreboardImpl implements FootballScoreboard {
     }
 
     @Override
-    public void removeMatch(String homeTeam, String awayTeam) {
+    public void doRemoveMatch(String homeTeam, String awayTeam) {
         // TODO make it thread safe!
         teamToMatches.remove(homeTeam);
         teamToMatches.remove(awayTeam);

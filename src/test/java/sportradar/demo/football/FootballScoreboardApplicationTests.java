@@ -5,8 +5,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sportradar.demo.football.ex.TeamAlreadyPlayingException;
+import sportradar.demo.football.ex.TeamNameOverflowException;
 
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.junit.jupiter.api.Assertions.*;
+import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TEAM_NAME;
 
 /**
  * TDD Test plan:
@@ -19,10 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>
  * TEST CASES:
- *
- * <p>
- * the same case but vice versa with the Away team
- * <p>
  *
  * <p>
  * the same case but both team names are too long
@@ -201,7 +200,7 @@ public class FootballScoreboardApplicationTests {
      * name     : Empty board. Invalid team names: input names are duplicated
      * desc     : Adding a new match when NO ONE other match started before, but passing two SAME NAMES for two teams
      * verify   : validation exception has thrown: DuplicatedTeamNamesException
-     *            scoreboard state should NOT bew changed!
+     *            scoreboard state should NOT be changed!
      * <p>
      */
     @Test
@@ -217,13 +216,58 @@ public class FootballScoreboardApplicationTests {
 
     /*
      * <p>
-     * name: Empty board. Invalid team names: Home team name is too long
-     * desc: Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
+     * name  : Empty board. Invalid team names: Home team name is too long
+     * desc  : Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
      * verify: validation exception has thrown: TeamNameOverflowException
+     *         scoreboard state should NOT be changed!
      * <p>
      */
     @Test
     void testStartMatch_EmptyBoard_LongHomeName() {
-
+        var longTeamName = randomAlphabetic(MAX_TEAM_NAME + 1);
+        assertThrows(TeamNameOverflowException.class, () -> scoreboard.startNewMatch(longTeamName, "teamB"));
+        assertTrue(
+                scoreboard.getSummary().isEmpty(),
+                "Scoreboard state has changed during invalid team name being added!"
+        );
     }
+
+    /*
+     * <p>
+     * name  : Empty board. Invalid team names: Home team name is too long
+     * desc  : Adding a new match when NO ONE other match started before, but passing home team name longer than max limited
+     * verify: validation exception has thrown: TeamNameOverflowException
+     *         scoreboard state should NOT be changed!
+     * <p>
+     */
+    @Test
+    void testStartMatch_EmptyBoard_LongAwayName() {
+        var longTeamName = randomAlphabetic(MAX_TEAM_NAME + 1);
+        assertThrows(TeamNameOverflowException.class, () -> scoreboard.startNewMatch("teamA", longTeamName));
+        assertTrue(
+                scoreboard.getSummary().isEmpty(),
+                "Scoreboard state has changed during invalid team name being added!"
+        );
+    }
+
+    /*
+     * <p>
+     * name  : Empty board. Invalid team names: both team names are too long
+     * desc  : Adding a new match when NO ONE other match started before,
+     *         but passing both team names longer than max limited
+     * verify: validation exception has thrown: TeamNameOverflowException
+     *         scoreboard state should NOT be changed!
+     * <p>
+     */
+    @Test
+    void testStartMatch_EmptyBoard_LongBothNames() {
+        var teamA = randomAlphabetic(MAX_TEAM_NAME + 1);
+        var teamB = randomAlphabetic(MAX_TEAM_NAME + 1);
+        assertThrows(TeamNameOverflowException.class, () -> scoreboard.startNewMatch(teamA, teamB));
+        assertTrue(
+                scoreboard.getSummary().isEmpty(),
+                "Scoreboard state has changed during invalid team name being added!"
+        );
+    }
+
 }

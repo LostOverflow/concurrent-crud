@@ -8,7 +8,7 @@ import java.util.List;
 public interface FootballScoreboard {
     void startNewMatch(String homeTeam, String awayTeam);
 
-    void updateScore(String homeTeam, int homeTeamScore, String awayTeam, int awayTeamScore);
+    void updateMatchScore(String homeTeam, String awayTeam, int homeTeamScore, int awayTeamScore);
 
     void removeMatch(String homeTeam, String awayTeam);
 
