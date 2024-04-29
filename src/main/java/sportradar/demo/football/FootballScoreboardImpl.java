@@ -226,7 +226,11 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
      */
     @Override
     public List<CurrentMatch> getSummary() {
-        // TODO implement locking if necessary by tech requirements
+        // TODO it according to best practice, the best way to work with it(CRUD) is to implement
+        //  all possible ISOLATION levels: READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE
+        //  extract isolation-level into property and allow users/developers to set desired level.
+        //
+        // This time I am keeping it as is.
         return teamToMatches.values().stream()
                 .map(AtomicReference::get)
                 .distinct()

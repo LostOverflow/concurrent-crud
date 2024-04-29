@@ -8,6 +8,8 @@ import sportradar.demo.football.ex.MatchNotStartedException;
 import sportradar.demo.football.ex.TeamAlreadyPlayingException;
 import sportradar.demo.football.ex.TeamNameOverflowException;
 
+import java.util.stream.IntStream;
+
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.junit.jupiter.api.Assertions.*;
 import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TEAM_NAME;
@@ -15,45 +17,12 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
 /**
  * TDD Test plan:
  *
- * <p>
- * TODO good to have test case:
- *  According to the task description we have to 'remember' the ordering of started matches.
- *  Concurrency challenge:
- *  Let's assume that:
- *      * matches could start and finish
- *      * matches could be extended for a different period of time
- *      * the same match (the same teams) could have such changes history log:
- *          started -> updated -> removed -> started (why not?)
- *  To make sure that getSummary operation is returning correct ordered matches
- *  we have to be able of making snapshots of match's ordered list in thread safe manner
  *
- * TODO could add 'double removing the same match' test case
  * <p>
- * name: 'Remove From multi match board'
- * desc: Removes dedicated match from multi match board
- * make sure: board is empty (getMatches should return empty list)
- * invoke: start match A and verify it
- * invoke: start match B and verify it
- * invoke: remove match A, verify match B is only on the board
- * <p>
- * TODO good to have test case for UPDATE operation:
- *  Let's assume scoreboard could be updated from different places of the world.
- *  That means f.e. 'UpdateScore' requests during the trip from client to server
- *  could achieve different time delays.
- *  And That means 'the server', who is in charge of request's processing
- *  could receive them in wrong order.
- *   For example:
- *   Original score order happened at match: 0 - 0, 0 - 1, 1 - 1
- *   Score updates ordering at server  side: 0 - 1, 1 - 1, 0 - 0
- *   Final score state for that match become incorrect and could stay in it for a long time.
- * <p>
- *  API OPERATION:
- *  signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
- *  desc: Receives a pair of home and away teams and Finishes match currently in progress.
- *  Removes match from the scoreboard.
- * <p>
- *  TODO add getSummary taking in account ordering of matches being added
- * <p>
+ * API OPERATION:
+ * signature: List<CurrentMatch> getMatches(String homeTeam, String awayTeam)
+ * desc: Receives a pair of home and away teams and Finishes match currently in progress.
+ * Removes match from the scoreboard.
  */
 public class FootballScoreboardApplicationTests {
 
@@ -420,6 +389,38 @@ public class FootballScoreboardApplicationTests {
     }
 
     /*
+     * name: 'Remove From multi match board'
+     * desc: Removes dedicated match from multi match board
+     * make sure: board is empty (getMatches should return empty list)
+     * invoke: start match A and verify it
+     * invoke: start match B and verify it
+     * invoke: remove match A, verify match B is only on the board
+     */
+    @Test
+    public void testRemoveMatch_MultiBoard() {
+        var homeTeamA = "homeTeamA";
+        var awayTeamA = "awayTeamA";
+        //
+        var homeTeamB = "homeTeamB";
+        var awayTeamB = "awayTeamB";
+
+        scoreboard.startNewMatch(homeTeamA, awayTeamA);
+        scoreboard.startNewMatch(homeTeamB, awayTeamB);
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(2, matchesSize);
+
+        scoreboard.removeMatch(homeTeamA, awayTeamA);
+        matches = scoreboard.getSummary();
+        assertEquals(1, matches.size());
+
+        var matchB = matches.get(0);
+
+        assertEquals(homeTeamB, matchB.getHomeTeam());
+        assertEquals(awayTeamB, matchB.getAwayTeam());
+    }
+
+    /*
      * name: 'Remove match duplicated'
      * desc: Trying to removes single match from dashboard twice
      * make sure: board is empty (getMatches should return empty list)
@@ -459,5 +460,91 @@ public class FootballScoreboardApplicationTests {
         assertThrows(MatchNotStartedException.class, () -> scoreboard.removeMatch("teamA", "teamB"));
         assertTrue(scoreboard.getSummary().isEmpty());
     }
+
+    /*
+        For example, if following matches are started in the specified order and their scores respectively updated:
+            a. Mexico 0     - Canada 5
+            b. Spain 10     - Brazil 2
+            c. Germany 2    - France 2
+            d. Uruguay 6    - Italy 6
+            e. Argentina 3  - Australia 1
+        The summary should be as follows:
+            1. Uruguay 6    - Italy 6
+            2. Spain 10     - Brazil 2
+            3. Mexico 0     - Canada 5
+            4. Argentina 3  - Australia 1
+            5. Germany 2    - France 2
+     */
+    @Test
+    public void testGetSummary_DemoExample() {
+        scoreboard.startNewMatch("Mexico", "Canada");
+        scoreboard.startNewMatch("Spain", "Brazil");
+        scoreboard.startNewMatch("Germany", "France");
+        scoreboard.startNewMatch("Uruguay", "Italy");
+        scoreboard.startNewMatch("Argentina", "Australia");
+
+        scoreboard.updateMatchScore("Mexico", "Canada", 0, 5);
+        scoreboard.updateMatchScore("Spain", "Brazil", 10, 2);
+        scoreboard.updateMatchScore("Germany", "France", 2, 2);
+        scoreboard.updateMatchScore("Uruguay", "Italy", 6, 6);
+        scoreboard.updateMatchScore("Argentina", "Australia", 3, 1);
+
+        var summary = scoreboard.getSummary();
+        summary.forEach(System.out::println);
+
+        assertEquals(5, summary.size());
+
+        IntStream.range(0, summary.size())
+                .forEach(order -> {
+                    var match = summary.get(order);
+                    switch (order) {
+                        case 0: {
+                            assertEquals("Uruguay", match.getHomeTeam());
+                            assertEquals("Italy", match.getAwayTeam());
+                            break;
+                        }
+                        case 1: {
+                            assertEquals("Spain", match.getHomeTeam());
+                            assertEquals("Brazil", match.getAwayTeam());
+                            break;
+                        }
+                        case 2: {
+                            assertEquals("Mexico", match.getHomeTeam());
+                            assertEquals("Canada", match.getAwayTeam());
+                            break;
+                        }
+                        case 3: {
+                            assertEquals("Argentina", match.getHomeTeam());
+                            assertEquals("Australia", match.getAwayTeam());
+                            break;
+                        }
+                        case 4: {
+                            assertEquals("Germany", match.getHomeTeam());
+                            assertEquals("France", match.getAwayTeam());
+                            break;
+                        }
+                        default:
+                            throw new IllegalArgumentException("Test has written for 5 matches");
+                    }
+                });
+    }
+
+    /*
+     * TODO good to have test case for UPDATE operation:
+     *  Let's assume scoreboard could be updated from different places of the world.
+     *  That means f.e. 'UpdateScore' requests during the trip from client to server
+     *  could achieve different time delays.
+     *  And That means 'the server', who is in charge of request's processing
+     *  could receive them in wrong order.
+     *  For example:
+     *   Original score updates: 0 - 0, 0 - 1, 1 - 1
+     *   Score updates at server: 0 - 1, 1 - 1, 0 - 0
+     *   Final score state for that match become incorrect and could stay in it for a long time.
+     *
+     *  Obviously it's unsafe to allow UPDATE in multi-thread environment
+     *  If to assume that only one score change could happen at one match withing one second,
+     *  and extend API interface for UPDATE operation with match's current time
+     *  then it could be a chance to apply only latest UPDATES but ignore 'past' ones.
+     */
 
 }
