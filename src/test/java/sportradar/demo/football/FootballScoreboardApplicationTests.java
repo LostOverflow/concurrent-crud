@@ -547,4 +547,9 @@ public class FootballScoreboardApplicationTests {
      *  then it could be a chance to apply only latest UPDATES but ignore 'past' ones.
      */
 
+    /*
+     * TODO add Lock tests (UPDATE/DELETE/INSERT)
+     * TODO add concurrency tests
+     */
+
 }
