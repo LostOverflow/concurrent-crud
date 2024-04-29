@@ -15,8 +15,6 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
 /**
  * TDD Test plan:
  *
- * TEST CASES:
- *
  * <p>
  * TODO good to have test case:
  *  According to the task description we have to 'remember' the ordering of started matches.
@@ -37,33 +35,6 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
  * and updates it appropriately
  * <p>
  * TEST CASES:
- * name: 'Update Empty board'
- * desc: Trying to update team[s] which are NOT playing now
- * verify: MatchNotStartedException
- * <p>
- * name: 'Update Single Match Board'
- * desc: Update scores on a Dashboard with single match on it
- * make sure: board is empty (getMatches should return empty list)
- * invoke: start new match
- * verify: single match on dashboard, scores are 0-0
- * invoke: update board with the new scores
- * verify: single match on dashboard, new scores are equal to new ones
- * <p>
- * name: 'Update Multi Match Board'
- * desc: Update scores on a Dashboard when multiple matches on it
- * make sure: board is empty (getMatches should return empty list)
- * invoke: start new match A and verify it
- * invoke: start new match B and verify it
- * invoke: update match A
- * verify: match A updated with the new score
- * invoke: update match B
- * verify: match B updated with the new score
- * <p>
- * Note:
- * I have spent some time thinking on how to validate Update scores. But some lack of football rules:
- * could be the scores updated more than +/-1 at one time? Could it be reset to 0/0 if any emergency happened?
- * Decided not to apply any validation for update yet
- * <p>
  * API OPERATION:
  * signature: finishMatch(String homeTeam, String awayTeam)
  * desc: Receives a pair of home and away teams and Finishes match currently in progress.
@@ -339,6 +310,114 @@ public class FootballScoreboardApplicationTests {
                 MatchNotStartedException.class,
                 () -> scoreboard.updateMatchScore(homeTeam, awayTeam, newHomeScore, newAwayScore)
         );
+    }
+
+    /*
+     * name: 'Update Single Match Board'
+     * desc: Update scores on a Dashboard with single match on it
+     * make sure: board is empty (getMatches should return empty list)
+     * invoke: start new match
+     * verify: single match on dashboard, scores are 0-0
+     * invoke: update board with the new scores
+     * verify: single match on dashboard, new scores are equal to new ones
+     */
+    @Test
+    public void testUpdate_SingleMatch() {
+        var homeTeam = "HomeTeam";
+        var awayTeam = "AwayTeam";
+        scoreboard.startNewMatch(homeTeam, awayTeam);
+
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Not a single match started!");
+
+        var match = matches.get(0);
+        assertEquals(homeTeam, match.getHomeTeam());
+        assertEquals(awayTeam, match.getAwayTeam());
+
+        // verify the same value after update
+        var startSeq = match.getStartSequence();
+
+        var newHomeScore = 1;
+        var newAwayScore = 1;
+
+        scoreboard.updateMatchScore(homeTeam, awayTeam, newHomeScore, newAwayScore);
+
+        matches = scoreboard.getSummary();
+        matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Not a single match started!");
+
+        match = matches.get(0);
+        assertEquals(homeTeam, match.getHomeTeam());
+        assertEquals(awayTeam, match.getAwayTeam());
+        assertEquals(newHomeScore, match.getHomeScore());
+        assertEquals(newAwayScore, match.getAwayScore());
+        assertEquals(startSeq, match.getStartSequence());
+    }
+
+    /*
+     * name: 'Update Multi Match Board'
+     * desc: Update scores on a Dashboard when multiple matches on it
+     * make sure: board is empty (getMatches should return empty list)
+     * invoke: start new match A and verify it
+     * invoke: start new match B and verify it
+     * invoke: update match A
+     * verify: match A updated with the new score
+     * invoke: update match B
+     * verify: match B updated with the new score
+     * <p>
+     * Note:
+     * I have spent some time thinking on how to validate Update scores. But some lack of football rules:
+     * could be the scores updated more than +/-1 at one time? Could it be reset to 0/0 if any emergency happened?
+     * Decided to apply validation only for positive values
+     * <p>
+     */
+    @Test
+    public void testUpdate_MultiMatch() {
+        var homeTeamA = "homeTeamA";
+        var awayTeamA = "awayTeamA";
+
+        var homeTeamB = "homeTeamB";
+        var awayTeamB = "awayTeamB";
+
+        scoreboard.startNewMatch(homeTeamA, awayTeamA);
+        scoreboard.startNewMatch(homeTeamB, awayTeamB);
+
+        // Matches should be returned in reversed order of adding it.
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(2, matchesSize);
+
+        // verify zero scores after matches added.
+        // matchA became last
+        var matchA = matches.get(1);
+        assertEquals(0, matchA.getHomeScore());
+        assertEquals(0, matchA.getAwayScore());
+
+        // matchB became first
+        var matchB = matches.get(0);
+        assertEquals(0, matchB.getHomeScore());
+        assertEquals(0, matchB.getAwayScore());
+
+        var newHomeScoreA = 1;
+        var newAwayScoreA = 2;
+        var newHomeScoreB = 3;
+        var newAwayScoreB = 4;
+
+        scoreboard.updateMatchScore(homeTeamA, awayTeamA, newHomeScoreA, newAwayScoreA);
+        scoreboard.updateMatchScore(homeTeamB, awayTeamB, newHomeScoreB, newAwayScoreB);
+
+        // matches order should be inverse again due to teamB having bigger total scores now
+        matches = scoreboard.getSummary();
+
+        matchB = matches.get(0);
+        matchA = matches.get(1);
+
+        assertEquals(newHomeScoreA, matchA.getHomeScore());
+        assertEquals(newAwayScoreA, matchA.getAwayScore());
+
+        assertEquals(newHomeScoreB, matchB.getHomeScore());
+        assertEquals(newAwayScoreB, matchB.getAwayScore());
     }
 
 }

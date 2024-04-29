@@ -79,7 +79,7 @@ public class CurrentMatch implements Comparable<CurrentMatch> {
         if (thisScores == otherScores) {
             return -1 * this.startSequence.compareTo(o.startSequence);
         }
-        return thisScores > otherScores ? 1 : -1;
+        return thisScores > otherScores ? -1 : 1;
     }
 
 }
