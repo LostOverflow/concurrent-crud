@@ -14,5 +14,8 @@ public interface FootballScoreboard {
 
     List<CurrentMatch> getSummary();
 
+    // for test purples
     void clearAllMatches();
+
+    // TODO implement print() method if required
 }
