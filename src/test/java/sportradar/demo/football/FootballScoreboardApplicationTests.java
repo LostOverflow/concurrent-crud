@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import sportradar.demo.football.ex.MatchNotStartedException;
 import sportradar.demo.football.ex.TeamAlreadyPlayingException;
 import sportradar.demo.football.ex.TeamNameOverflowException;
 
@@ -14,11 +15,6 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
 /**
  * TDD Test plan:
  *
- * <p>
- * API OPERATION:
- * signature: startNewMatch(String homeTeam, String awayTeam)
- * desc: Starts a new match, assuming initial score 0(Home team) – 0(Away team) and adding it the scoreboard.
- * <p>
  * TEST CASES:
  *
  * <p>
@@ -166,8 +162,8 @@ public class FootballScoreboardApplicationTests {
         var matchesSize = matches.size();
         assertEquals(1, matchesSize, "Not a single match started!");
         var match = matches.get(0);
-        assertEquals(teamA, match.getHomeTeamName());
-        assertEquals(teamB, match.getAwayTeamName());
+        assertEquals(teamA, match.getHomeTeam());
+        assertEquals(teamB, match.getAwayTeam());
         assertTrue(match.getStartSequence() > 0, "Start sequence has to be incremented!");
     }
 
@@ -268,8 +264,8 @@ public class FootballScoreboardApplicationTests {
         var matchesSize = matches.size();
         assertEquals(1, matchesSize, "Started match should be single!");
         var match = matches.get(0);
-        assertEquals(homeTeam, match.getHomeTeamName());
-        assertEquals(otherTeam, match.getAwayTeamName());
+        assertEquals(homeTeam, match.getHomeTeam());
+        assertEquals(otherTeam, match.getAwayTeam());
         // TODO Consider if to test startSequence separately (own test)
     }
 
@@ -294,8 +290,8 @@ public class FootballScoreboardApplicationTests {
         var matchesSize = matches.size();
         assertEquals(1, matchesSize, "Started match should be single!");
         var match = matches.get(0);
-        assertEquals(awayTeamName, match.getAwayTeamName());
-        assertEquals(otherTeamName, match.getHomeTeamName());
+        assertEquals(awayTeamName, match.getAwayTeam());
+        assertEquals(otherTeamName, match.getHomeTeam());
     }
 
     /*
@@ -319,8 +315,30 @@ public class FootballScoreboardApplicationTests {
         var matchesSize = matches.size();
         assertEquals(1, matchesSize, "Started match should be single!");
         var match = matches.get(0);
-        assertEquals(homeTeamName, match.getHomeTeamName());
-        assertEquals(awayTeamName, match.getAwayTeamName());
+        assertEquals(homeTeamName, match.getHomeTeam());
+        assertEquals(awayTeamName, match.getAwayTeam());
+    }
+
+    // tests for checking correct order of Matches added going to cover in getSummary method tests
+
+    /*
+     * <p>
+     * name: 'Update Empty board'
+     * desc: Trying to update team[s] which are NOT playing now
+     * verify: MatchNotStartedException
+     * <p>
+     */
+    @Test
+    public void testUpdate_EmptyBoard() {
+        var homeTeam = "HomeTeam";
+        var awayTeam = "AwayTeam";
+        var newHomeScore = 1;
+        var newAwayScore = 1;
+
+        assertThrows(
+                MatchNotStartedException.class,
+                () -> scoreboard.updateMatchScore(homeTeam, awayTeam, newHomeScore, newAwayScore)
+        );
     }
 
 }

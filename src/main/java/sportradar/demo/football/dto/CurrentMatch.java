@@ -3,6 +3,9 @@ package sportradar.demo.football.dto;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 @Data
 @RequiredArgsConstructor
 /*
@@ -19,19 +22,37 @@ import lombok.RequiredArgsConstructor;
  * */
 public class CurrentMatch implements Comparable<CurrentMatch> {
 
-    // TODO add Validators, Converters, Formatters according to test requirements
-    private final String homeTeamName;
-    private final String awayTeamName;
+    private final String homeTeam;
+    private final String awayTeam;
     // to guarantee atomic updates for both team scores
     // I prefer to replace target CurrentMatch objects with new scores
     // AtomicInteger will not solve the issue
-    private final Integer homeTeamScore;
-    private final Integer awayTeamScore;
+    private final Integer homeScore;
+    private final Integer awayScore;
 
     // StartSequence should be assigned during CurrentMatch is being created.
     // Each new created CurrentMatch should have unique, always incremented number.
     // Need not guarantee for strict sequence, could have some spaces between: 1, 2, 3, 5, 10, 11...
     private final Integer startSequence;
+
+    // Never wanted to bring complexity to the code
+    // but seems it required for correct update/insert/delete logic
+    private final Lock matchLock;
+
+    public CurrentMatch(String homeTeam, String awayTeam, int homeScore, int awayScore, int startSequence) {
+        this.homeTeam = homeTeam;
+        this.awayTeam = awayTeam;
+        this.homeScore = homeScore;
+        this.awayScore = awayScore;
+        this.startSequence = startSequence;
+        // new CurrentMatch is always being created in locked state
+        // when reference to match be inserted into map for HOME team
+        // it should never be able to read/update/delete it from map
+        // because data is not consistent yet until AWAY team be inserted
+        var newLock = new ReentrantLock();
+        newLock.lock();
+        matchLock = newLock;
+    }
 
     @Override
     public boolean equals(Object obj) {
@@ -40,19 +61,19 @@ public class CurrentMatch implements Comparable<CurrentMatch> {
         }
         // Let's check CurrentMatch equality by team names
         // because the scores could be changed during match is running
-        return this.homeTeamName.equals(other.homeTeamName) &&
-                this.awayTeamName.equals(other.awayTeamName);
+        return this.homeTeam.equals(other.homeTeam) &&
+                this.awayTeam.equals(other.awayTeam);
     }
 
     @Override
     public String toString() {
-        return "#" + startSequence + " " + homeTeamName + " " + homeTeamScore + " - " + awayTeamName + " " + awayTeamScore;
+        return "#" + startSequence + " " + homeTeam + " " + homeScore + " - " + awayTeam + " " + awayScore;
     }
 
     @Override
     public int compareTo(CurrentMatch o) {
-        var thisScores = this.homeTeamScore + this.awayTeamScore;
-        var otherScores = o.homeTeamScore + o.awayTeamScore;
+        var thisScores = this.homeScore + this.awayScore;
+        var otherScores = o.homeScore + o.awayScore;
         // according to business requirements we have to compare CurrentMatch
         // by total scores, and if the same scores then compare by added sequence desc
         if (thisScores == otherScores) {

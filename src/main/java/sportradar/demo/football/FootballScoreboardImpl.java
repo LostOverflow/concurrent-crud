@@ -3,6 +3,8 @@ package sportradar.demo.football;
 
 import lombok.Getter;
 import sportradar.demo.football.dto.CurrentMatch;
+import sportradar.demo.football.ex.MatchLockedTimeout;
+import sportradar.demo.football.ex.MatchNotStartedException;
 import sportradar.demo.football.ex.TeamAlreadyPlayingException;
 import sportradar.demo.football.validator.MatchValidator;
 import sportradar.demo.football.validator.SportRadarMatchValidator;
@@ -12,7 +14,9 @@ import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -23,6 +27,12 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
     @Getter
     private static final FootballScoreboard instance = new FootballScoreboardImpl(new SportRadarMatchValidator());
 
+    // See example first:
+    // data: [Argentina 0 - Brazil 0]
+    // stored into map:
+    // "Argentina" -> CurrentMatch[homeTeam: Argentina; awayTeam: Brazil; homeScore: 0; awayScore: 0, ...]
+    // "Brazil"    -> CurrentMatch[homeTeam: Argentina; awayTeam: Brazil; homeScore: 0; awayScore: 0, ...]
+    //
     // SortedMap will take care about checking for unique and ordered items.
     // Actually... I am going to use only single team name as a Key!
     // Why:
@@ -31,10 +41,21 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
     //   will NOT guarantee unique check of separate team names
     //
     // Key is a String for team name (both home and away teams are stored separately)
-    // Value is CurrentMatch for team is playing in
+    // Value is CurrentMatch for team is playing in it
     //
     // One team could play only at exact one CurrentMatch
-    private final SortedMap<String, CurrentMatch> teamToMatches = new ConcurrentSkipListMap<>();
+    //
+    // I decided to use AtomicReference<CurrentMatch> instead of simple CurrentMatch and that's why:
+    // map will contain always EVEN or ZERO entries as a [ teamName -> CurrentMatch ]
+    // where CurrentMatch is always duplicated for HOME and AWAY team
+    // thus we have got dangerous conditions when:
+    //  * HOME reference to CurrentMatch could be changed
+    //  * but AWAY reference - still refer to old value
+    // which is leading to data inconsistency
+    // AtomicReference will be always the same for both HOME and AWAY teams
+    // Any change to target CurrentMatch from any thread
+    // will switch reference for both teams simultaneously
+    private final SortedMap<String, AtomicReference<CurrentMatch>> teamToMatches = new ConcurrentSkipListMap<>();
 
     // Using Atomic to make sure each new match will have unique sequence number
     // Some of unique ids would be wasted if match is already playing
@@ -55,6 +76,7 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
         // TODO we could avoid waisted ids of seqGen if implement lazy generation of it:
         //  for example using lambda: () -> seqGen.incrementAndGet();
         var newMatch = new CurrentMatch(homeTeam, awayTeam, 0, 0, seqGen.incrementAndGet());
+        var newMatchRef = new AtomicReference<>(newMatch);
 
         // It's better to explain what's going on in code below:
         // When we need to guarantee for unique check for BOTH:
@@ -68,7 +90,8 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
         // 1. Try adding homeTeam. If success - then other threads are impossible to do first step,
         //    and now we are secure for the second step
         // 2. Try adding awayTeam.
-        var existingMatch = teamToMatches.putIfAbsent(homeTeam, newMatch);
+        var existingMatch = teamToMatches.putIfAbsent(homeTeam, newMatchRef);
+
         if (existingMatch != null) {
             // teamToMatches map was not changed by this thread! need not clear it.
             throw new TeamAlreadyPlayingException("Home team is already playing!");
@@ -82,9 +105,11 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
         //  * adding invalid Match(teamA, teamB) when teamB is already playing, teamA has been added (first step only)
         // other thread:
         //  * adding valid Match(teamA, teamC) when teamA is absent on board, teamC is absent on board
-        // Other thread will get FALSE negative exception
+        // Other thread will get false-negative exception
+        // !
+        // Update: attempted to fix with lock, need for test
 
-        existingMatch = teamToMatches.putIfAbsent(awayTeam, newMatch);
+        existingMatch = teamToMatches.putIfAbsent(awayTeam, newMatchRef);
         if (existingMatch != null) {
             // We added homeTeam to teamToMatches map
             // But awayTeam already playing somewhere else
@@ -92,47 +117,118 @@ public class FootballScoreboardImpl extends FootballScoreboardTemplate {
             teamToMatches.remove(homeTeam);
             throw new TeamAlreadyPlayingException("Away team is already playing!");
         }
+        // now, when BOTH teams inserted into map, let's unlock match to be able to read/update/delete
+        newMatch.getMatchLock().unlock();
     }
 
     @Override
-    public void doUpdateMatchScore(String homeTeam, String awayTeam, int homeTeamScore, int awayTeamScore) {
+    public void doUpdateMatchScore(String homeTeam, String awayTeam, int homeNewScore, int awayNewScore) {
         // TODO add validation at least to escape negative values
 
-        // Going to catch and hold previous Match reference during atomic computation map operation.
-        // Will use it for rollback if first team be updated but NOT updated for second one
-        var oldMatch = new AtomicReference<>();
+        // Going to catch and hold Match Lock reference during atomic computation map operation.
+        // Will use it for rollback if first team be updated, but NOT updated for second one
+        var matchLockRef = new AtomicReference<Lock>();
 
-        var newMatch = teamToMatches.computeIfPresent(homeTeam, (key, oldValue) -> {
+        // HOME team
+        var currMatch = teamToMatches.computeIfPresent(homeTeam, (key, matchRef) -> {
+            // trying to lock match only (not changing scores yet)
+            // it should be isolated from read/delete/update by other threads
+            try {
+                var lock = matchRef.get().getMatchLock();
+                var isLocked = lock.tryLock(100L, MILLISECONDS);
+                if (!isLocked) {
+                    // Advice to trying again without any delays!
+                    throw new MatchLockedTimeout("Match is currently locked, try UPDATE MATCH SCORE again!");
+                }
+                matchLockRef.set(lock);
+                System.out.println("UPDATE MATCH SCORE: Lock was set for HOME team: [" + homeTeam + "]");
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return matchRef;
+        });
+
+        if (currMatch == null) {
+            throw new MatchNotStartedException("Could not found HOME team on the matches board!");
+        }
+
+        // AWAY team
+        currMatch = teamToMatches.computeIfPresent(awayTeam, (team, matchRef) -> {
             // Creating immutable copy of CurrentMatch
             // Assigning NEW team scores using input parameters
             // But EXISTING value for startSequence
-            var newValue = new CurrentMatch(
-                    homeTeam, awayTeam, homeTeamScore, awayTeamScore, oldValue.getStartSequence()
+            var updatedMatch = new CurrentMatch(
+                    homeTeam, awayTeam, homeNewScore, awayNewScore, matchRef.get().getStartSequence()
             );
-            oldMatch.set(oldValue);
-            return newValue;
+            matchRef.set(updatedMatch);
+            // Match reference was not changed! only target reference to CurrentMatch
+            return matchRef;
         });
 
-        if (newMatch == null) {
-            // TODO to be continued
+        // Release the lock on CurrentMatch which was set on first step
+        matchLockRef.get().unlock();
+        System.out.println("UPDATE MATCH SCORE: Lock was released for HOME team: [" + homeTeam + "]");
+
+        if (currMatch == null) {
+            throw new MatchNotStartedException("Could not found AWAY team on the matches board!");
         }
-
-
-//        var newMatch = new CurrentMatch(homeTeam, awayTeam, homeTeamScore, awayTeamScore);
-        throw new IllegalStateException("Not implemented!");
     }
 
     @Override
     public void doRemoveMatch(String homeTeam, String awayTeam) {
-        // TODO make it thread safe!
+        // Lock HOME team to disable it from read/delete/update
+        var matchRef = teamToMatches.get(homeTeam);
+
+        if (matchRef == null) {
+            throw new MatchNotStartedException("REMOVE MATCH: Could not found HOME team on the matches board!");
+        }
+
+        try {
+            var lock = matchRef.get().getMatchLock();
+            var isLocked = lock.tryLock(100L, MILLISECONDS);
+            if (!isLocked) {
+                // Advice to trying again without any delays!
+                throw new MatchLockedTimeout("REMOVE MATCH: Match is currently locked, try again!");
+            }
+            System.out.println("REMOVE MATCH: Lock was set for HOME team: [" + homeTeam + "]");
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // order does not matter for removing teams
         teamToMatches.remove(homeTeam);
         teamToMatches.remove(awayTeam);
     }
 
+    /*
+     * Going to prevent from fetching match list if any of list matches is locked.
+     * Actually, lock or not before reading is the question of ISOLATION LEVEL (in terms of RDBMS)
+     * So it depends on business requirements / or tech lead decision.
+     * I am going  to Lock only matches which are exists in map.
+     * It's still possible to insert new matches during read but not update/delete
+     *
+     * Some time later... thinking about "edge cases" I could see an issue:
+     * Assume next TWO teams started to play:
+     *  "Mamas - 0, Papas     - 0"
+     *  "Sons  - 0, Daughters - 0"
+     * Read operation started to select all matches and has read first item from list (Mamas - Papas)
+     * Next moment both teams stopped to play and swapped between each other, now it looks like:
+     *  "Mamas - 0, Daughters - 0"
+     *  "Papas - 0, Sons      - 0"
+     * Read operation will continue to fetch next item and will get next result:
+     * "Mamas - 0, Papas     - 0"
+     * "Papas - 0, Sons      - 0"
+     * -- Papas are playing in both teams which is not possible
+     * TODO try to fix it
+     *  we could introduce one more Lock - which will Lock full access to cache map
+     *  prefer to to keep as is for a while.
+     *
+     */
     @Override
     public List<CurrentMatch> getSummary() {
-        // TODO: no guarantees for Atomic copy of map.. thing about how to fix it
+        // TODO implement locking if necessary by tech requirements
         return teamToMatches.values().stream()
+                .map(AtomicReference::get)
                 .distinct()
                 .sorted()
                 .collect(toList());
