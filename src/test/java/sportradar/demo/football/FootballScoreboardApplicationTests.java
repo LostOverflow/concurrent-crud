@@ -26,40 +26,7 @@ import static sportradar.demo.football.validator.SportRadarMatchValidator.MAX_TE
  *          started -> updated -> removed -> started (why not?)
  *  To make sure that getSummary operation is returning correct ordered matches
  *  we have to be able of making snapshots of match's ordered list in thread safe manner
- * </p>
- * <p>
- * API OPERATION:
- * <p>
- * signature: updateScore(int homeTeamScore, int awayTeamScore)
- * desc: Receives a pair of absolute scores: home team score and away team score
- * and updates it appropriately
- * <p>
- * TEST CASES:
- * API OPERATION:
- * signature: finishMatch(String homeTeam, String awayTeam)
- * desc: Receives a pair of home and away teams and Finishes match currently in progress.
- * Removes match from the scoreboard.
- * <p>
- * TEST CASES:
- * <p>
- * Note: "removing from" operation could be implemented in both ways:
- * * throw an exception if search item was not there
- * * ignore all if search item was not there
- * If we want to keep idempotency during repeated operations - then should ignore
- * <p>
- * I prefer to throw an exception, that is more informative
- * <p>
- * name: 'Remove last match'
- * desc: Removes last match from dashboard
- * make sure: board is empty (getMatches should return empty list)
- * invoke: start any new match and verify it
- * invoke: finishMatch which was created before
- * verify: board is empty (getMatches should return empty list)
- * <p>
- * name: 'Remove From empty board'
- * desc: Tries to remove match from empty board
- * make sure: exception has throws: MatchNotStartedException(String homeTeam, String awayTeam)
- * <p>
+ *
  * TODO could add 'double removing the same match' test case
  * <p>
  * name: 'Remove From multi match board'
@@ -418,6 +385,79 @@ public class FootballScoreboardApplicationTests {
 
         assertEquals(newHomeScoreB, matchB.getHomeScore());
         assertEquals(newAwayScoreB, matchB.getAwayScore());
+    }
+
+    /*
+     * name: 'Remove single match'
+     * desc: Removes single match from dashboard
+     * make sure: board is empty (getMatches should return empty list)
+     * invoke: start any new match and verify it
+     * invoke: finishMatch which was created before
+     * verify: board is empty (getMatches should return empty list)
+     *
+     * Note: "removing from" operation could be implemented in both ways:
+     * * throw an exception if search item was not there
+     * * ignore all if search item was not there
+     * If we want to keep idempotency during repeated operations - then should ignore
+     * I prefer to throw an exception, that is more informative
+     */
+    @Test
+    public void testRemoveMatch_SingleMatchBoard() {
+        var homeTeam = "homeTeam";
+        var awayTeam = "awayTeam";
+
+        scoreboard.startNewMatch(homeTeam, awayTeam);
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Started match should be single!");
+        var match = matches.get(0);
+        assertEquals(homeTeam, match.getHomeTeam());
+        assertEquals(awayTeam, match.getAwayTeam());
+
+        scoreboard.removeMatch(homeTeam, awayTeam);
+        matches = scoreboard.getSummary();
+        assertEquals(0, matches.size());
+    }
+
+    /*
+     * name: 'Remove match duplicated'
+     * desc: Trying to removes single match from dashboard twice
+     * make sure: board is empty (getMatches should return empty list)
+     * invoke: start any new match and verify it
+     * invoke: finishMatch which was created before
+     * invoke: finishMatch which was created before AGAIN
+     * verify: MatchNotStartedException has throws
+     */
+    @Test
+    public void testRemoveMatch_DuplicatedRemove() {
+        // TODO This peace of code (create single match) duplicated multiple times, consider extract method
+        var homeTeam = "homeTeam";
+        var awayTeam = "awayTeam";
+
+        scoreboard.startNewMatch(homeTeam, awayTeam);
+        var matches = scoreboard.getSummary();
+        var matchesSize = matches.size();
+        assertEquals(1, matchesSize, "Started match should be single!");
+        var match = matches.get(0);
+        assertEquals(homeTeam, match.getHomeTeam());
+        assertEquals(awayTeam, match.getAwayTeam());
+
+        scoreboard.removeMatch(homeTeam, awayTeam);
+        matches = scoreboard.getSummary();
+        assertEquals(0, matches.size());
+
+        assertThrows(MatchNotStartedException.class, () -> scoreboard.removeMatch(homeTeam, awayTeam));
+    }
+
+    /*
+     * name: 'Remove From empty board'
+     * desc: Tries to remove match from empty board
+     * make sure: exception has throws: MatchNotStartedException(String homeTeam, String awayTeam)
+     */
+    @Test
+    public void testRemoveMatch_EmptyBoard() {
+        assertThrows(MatchNotStartedException.class, () -> scoreboard.removeMatch("teamA", "teamB"));
+        assertTrue(scoreboard.getSummary().isEmpty());
     }
 
 }
